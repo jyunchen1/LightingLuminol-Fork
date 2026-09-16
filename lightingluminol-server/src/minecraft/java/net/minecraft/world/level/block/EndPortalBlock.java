@@ -76,6 +76,15 @@ public class EndPortalBlock extends BaseEntityBlock implements Portal {
                 if (level.paperConfig().misc.disableEndCredits) {player.seenCredits = true; return;} // Paper - Option to disable end credits
                 player.showEndCredits();
             } else {
+                // LightingLuminol start - unsafe teleportation
+                // Folia's end portal teleportation is fully async (Entity#transformForAsyncTeleport),
+                // so FallingBlockEntity#teleport is never called and forceTickAfterTeleportToDuplicate
+                // would never be set on the source entity. Trigger the portal logic synchronously here
+                // (before the falling block places its block back in tick()) to restore sand duping.
+                if (meow.bacteriawa.lightingluminol.config.FixesConfig.AllowUnsafeTeleportation.enabled && !(entity instanceof net.minecraft.world.entity.player.Player)) {
+                    entity.endPortalLogicAsync(pos);
+                }
+                // LightingLuminol end
                 entity.setAsInsidePortal(this, pos);
             }
         }

@@ -4335,6 +4335,22 @@ public abstract class Entity
                         teleportHoldId
                     );
                     List<EntityTreeNode> fullTree = passengerTree.getFullTree();
+                    // SJZ start - teleport region mismatch guard
+                    // If something moved an entity (e.g. a plugin calling teleportAsync inside PlayerMoveEvent) while its
+                    // teleport was pending, its current position may belong to another region. Adding it here would throw
+                    // "Cannot add entity off-main thread" and Folia would shut the whole server down. Snap it back to the
+                    // position this task was scheduled for instead, and log who it was.
+                    for (EntityTreeNode node : fullTree) {
+                        Vec3 sjzCur = node.root.position();
+                        if (!ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(destination,
+                                ca.spottedleaf.moonrise.common.util.CoordinateUtils.getChunkX(sjzCur),
+                                ca.spottedleaf.moonrise.common.util.CoordinateUtils.getChunkZ(sjzCur), 0)) {
+                            LOGGER.warn("[SJZ] {} moved to {} while teleporting to {} in {} (region mismatch) - snapping back instead of shutting down",
+                                node.root, sjzCur, pos, destination);
+                            node.root.setPosRaw(pos.x, pos.y, pos.z);
+                        }
+                    }
+                    // SJZ end
                     for (EntityTreeNode node : fullTree) {
                         node.root.placeSingleSync(originWorld, destination, node, teleportFlags);
                     }
